@@ -1,5 +1,4 @@
 import { Link } from 'expo-router';
-import { Image } from 'expo-image';
 import { Text, View } from 'react-native';
 
 export default function Index() {
