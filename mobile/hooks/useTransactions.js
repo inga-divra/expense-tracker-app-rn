@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
+
 const API_URL = 'https://wallet-api-iucj.onrender.com/api';
 
 export const useTransactions = (userId) => {
@@ -11,11 +12,27 @@ export const useTransactions = (userId) => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // useCallback is used for performance reasons, it will memoize the function
   const fetchTransactions = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/transactions/${userId}`);
-      const data = await response.json();
+
+      //
+      if (response.status === 204) {
+        console.log('No transactions, 204 from API');
+        setTransactions([]);
+        return;
+      }
+
+      const text = await response.text();
+      console.log('RAW TRANSACTIONS RESPONSE:', text);
+
+      if (!text) {
+        //
+        setTransactions([]);
+        return;
+      }
+
+      const data = JSON.parse(text);
       setTransactions(data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -25,7 +42,22 @@ export const useTransactions = (userId) => {
   const fetchSummary = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/transactions/summary/${userId}`);
-      const data = await response.json();
+
+      if (response.status === 204) {
+        console.log('No summary, 204 from API');
+        setSummary({ balance: 0, income: 0, expenses: 0 });
+        return;
+      }
+
+      const text = await response.text();
+      console.log('RAW SUMMARY RESPONSE:', text);
+
+      if (!text) {
+        setSummary({ balance: 0, income: 0, expenses: 0 });
+        return;
+      }
+
+      const data = JSON.parse(text);
       setSummary(data);
     } catch (error) {
       console.error('Error fetching summary:', error);
@@ -37,7 +69,6 @@ export const useTransactions = (userId) => {
 
     setIsLoading(true);
     try {
-      // can be run in parallel
       await Promise.all([fetchTransactions(), fetchSummary()]);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -53,8 +84,7 @@ export const useTransactions = (userId) => {
       });
       if (!response.ok) throw new Error('Failed to delete transaction');
 
-      // Refresh data after deletion
-      loadData();
+      await loadData();
       Alert.alert('Success', 'Transaction deleted successfully');
     } catch (error) {
       console.error('Error deleting transaction:', error);
